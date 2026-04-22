@@ -385,6 +385,3 @@ docker-compose exec backend bash
 docker-compose exec frontend sh
 ```
 
----
-
-Copyright©️ Codebasics Inc. All rights reserved.
