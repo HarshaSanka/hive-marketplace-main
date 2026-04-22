@@ -24,6 +24,23 @@ logger = logging.getLogger(__name__)
 
 class EmailService:
     def __init__(self):
+        logger.info(
+            "email_service.__init__.start",
+            extra={
+                "context": {
+                    "smtp_configured": bool(
+                        settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD
+                    ),
+                    "smtp_host": settings.SMTP_HOST,
+                    "smtp_port": settings.SMTP_PORT,
+                    "smtp_from_domain": (
+                        settings.SMTP_FROM.split("@")[-1]
+                        if getattr(settings, "SMTP_FROM", None) and "@" in settings.SMTP_FROM
+                        else None
+                    ),
+                }
+            },
+        )
         self.smtp_host = settings.SMTP_HOST
         self.smtp_port = settings.SMTP_PORT
         self.smtp_user = settings.SMTP_USER
@@ -52,6 +69,17 @@ class EmailService:
         Returns:
             True if email sent successfully, False otherwise
         """
+        logger.info(
+            "email_service.send_email.start",
+            extra={
+                "context": {
+                    "smtp_configured": self.smtp_configured,
+                    "to_domain": to_email.split("@")[-1] if "@" in to_email else None,
+                    "subject": subject,
+                    "html_len": len(html_content) if html_content is not None else None,
+                }
+            },
+        )
         if self.smtp_configured:
             try:
                 # Create the email message
@@ -106,6 +134,17 @@ class EmailService:
         error: Optional[str] = None
     ):
         """Log email content to console for development/debugging"""
+        logger.info(
+            "email_service._log_email.start",
+            extra={
+                "context": {
+                    "to_domain": to_email.split("@")[-1] if "@" in to_email else None,
+                    "subject": subject,
+                    "html_len": len(html_content) if html_content is not None else None,
+                    "has_error": bool(error),
+                }
+            },
+        )
         logger.info("=" * 60)
         if error:
             logger.info(f"⚠ EMAIL FAILED - Error: {error}")
@@ -127,6 +166,10 @@ class EmailService:
         Returns the base HTML email template with consistent styling.
         Uses Hive's brand colors and modern design.
         """
+        logger.info(
+            "email_service._get_base_template.start",
+            extra={"context": {"content_len": len(content) if content is not None else None}},
+        )
         return f"""
         <!DOCTYPE html>
         <html lang="en">
@@ -180,6 +223,16 @@ class EmailService:
     
     async def send_welcome_email(self, email: str, name: str, account_type: str) -> bool:
         """Send welcome email after registration"""
+        logger.info(
+            "email_service.send_welcome_email.start",
+            extra={
+                "context": {
+                    "to_domain": email.split("@")[-1] if "@" in email else None,
+                    "account_type": account_type,
+                    "name_len": len(name) if name is not None else None,
+                }
+            },
+        )
         subject = "Welcome to Hive! 🎉"
         
         if account_type == "seller":
@@ -239,6 +292,18 @@ class EmailService:
         items: list
     ) -> bool:
         """Send order confirmation to buyer after checkout"""
+        logger.info(
+            "email_service.send_order_confirmation.start",
+            extra={
+                "context": {
+                    "to_domain": buyer_email.split("@")[-1] if "@" in buyer_email else None,
+                    "order_id_prefix": order_id[:8].upper() if order_id else None,
+                    "total_amount": total_amount,
+                    "items_count": len(items) if items is not None else None,
+                    "buyer_name_len": len(buyer_name) if buyer_name is not None else None,
+                }
+            },
+        )
         subject = f"Order Confirmed! #{order_id[:8].upper()}"
         
         items_html = "".join([
@@ -320,6 +385,18 @@ class EmailService:
         items: list
     ) -> bool:
         """Send new order notification to seller when buyer places an order"""
+        logger.info(
+            "email_service.send_new_order_notification.start",
+            extra={
+                "context": {
+                    "to_domain": seller_email.split("@")[-1] if "@" in seller_email else None,
+                    "order_id_prefix": order_id[:8].upper() if order_id else None,
+                    "items_count": len(items) if items is not None else None,
+                    "seller_name_len": len(seller_name) if seller_name is not None else None,
+                    "buyer_name_len": len(buyer_name) if buyer_name is not None else None,
+                }
+            },
+        )
         subject = f"🔔 New Order Received! #{order_id[:8].upper()}"
         
         items_html = "".join([
@@ -390,6 +467,17 @@ class EmailService:
         tracking_number: str
     ) -> bool:
         """Send shipping notification to buyer when seller ships the order"""
+        logger.info(
+            "email_service.send_shipping_notification.start",
+            extra={
+                "context": {
+                    "to_domain": buyer_email.split("@")[-1] if "@" in buyer_email else None,
+                    "order_id_prefix": order_id[:8].upper() if order_id else None,
+                    "tracking_last4": tracking_number[-4:] if tracking_number else None,
+                    "buyer_name_len": len(buyer_name) if buyer_name is not None else None,
+                }
+            },
+        )
         subject = f"🚚 Your Order is On Its Way! #{order_id[:8].upper()}"
         
         content = f"""
@@ -452,6 +540,17 @@ class EmailService:
         product_id: str
     ) -> bool:
         """Send out of stock alert to seller when a product reaches zero inventory"""
+        logger.info(
+            "email_service.send_out_of_stock_alert.start",
+            extra={
+                "context": {
+                    "to_domain": seller_email.split("@")[-1] if "@" in seller_email else None,
+                    "product_id": product_id,
+                    "product_title_len": len(product_title) if product_title is not None else None,
+                    "seller_name_len": len(seller_name) if seller_name is not None else None,
+                }
+            },
+        )
         subject = f"⚠️ Stock Alert: {product_title} is Out of Stock"
         
         content = f"""
@@ -516,6 +615,16 @@ class EmailService:
         order_id: str
     ) -> bool:
         """Send delivery confirmation to buyer (optional - for future use)"""
+        logger.info(
+            "email_service.send_order_delivered_notification.start",
+            extra={
+                "context": {
+                    "to_domain": buyer_email.split("@")[-1] if "@" in buyer_email else None,
+                    "order_id_prefix": order_id[:8].upper() if order_id else None,
+                    "buyer_name_len": len(buyer_name) if buyer_name is not None else None,
+                }
+            },
+        )
         subject = f"✅ Your Order Has Been Delivered! #{order_id[:8].upper()}"
         
         content = f"""
